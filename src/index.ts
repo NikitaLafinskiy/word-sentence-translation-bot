@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import fs from "fs"
-import {words} from "./words"
+import { words } from "./words"
 import * as deepl from 'deepl-node';
 require("dotenv").config()
 
@@ -33,17 +33,24 @@ const translateSentenceRu = async (sentence: string, translator: deepl.Translato
 (async () => {
     const sentences = []
     const translator = new deepl.Translator(process.env.DEEPL_API_KEY as string)
+    const unprocessedWords = fs.createWriteStream("./unprocessed_words.txt")
 
     const writeStream = fs.createWriteStream("./sentences.txt")
     writeStream.write("english|russian\n")
 
     for (let i = 0; i < words.length; i++) {
-        const sentence = await findSentence(words[i])
+        const currWord = words[i]
+
+        const sentence = await findSentence(currWord)
         if (sentence) {
             const translation = (await translateSentenceRu(sentence, translator))?.text
-            writeStream.write(`${sentence}|${translation}\n`)
+            const wordTranslation = (await translateSentenceRu(currWord, translator))?.text!
+            writeStream.write(`${currWord.toUpperCase()} ${sentence}|${wordTranslation.toUpperCase()} ${translation}\n`)
             sentences.push([sentence, translation])
             console.log((i * 100 / words.length).toFixed(2) + "% finished")
+        } else {
+            unprocessedWords.write(words[i] + "\n")
+            console.log("Word unprocessed: " + words[i])
         }
     }
 })()
